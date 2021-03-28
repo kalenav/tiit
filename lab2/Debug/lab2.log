@@ -1,0 +1,8 @@
+﻿  lab2.cpp
+E:\Important\tiit\lab2\lab2.cpp(158,22): warning C4477: 'fscanf_s' : format string '%d' requires an argument of type 'int *', but variadic argument 1 has type 'short *'
+E:\Important\tiit\lab2\lab2.cpp(158,22): message : consider using '%hd' in the format string
+E:\Important\tiit\lab2\lab2.cpp(158,22): warning C4477: 'fscanf_s' : format string '%d' requires an argument of type 'int *', but variadic argument 2 has type 'short *'
+E:\Important\tiit\lab2\lab2.cpp(158,22): message : consider using '%hd' in the format string
+E:\Important\tiit\lab2\lab2.cpp(158,22): warning C4477: 'fscanf_s' : format string '%d' requires an argument of type 'int *', but variadic argument 3 has type 'short *'
+E:\Important\tiit\lab2\lab2.cpp(158,22): message : consider using '%hd' in the format string
+  lab2.vcxproj -> E:\Important\tiit\lab2\Debug\lab2.exe
