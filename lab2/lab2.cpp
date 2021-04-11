@@ -1,209 +1,134 @@
-﻿#include <iostream>
+﻿#define _CRT_SECURE_NO_WARNINGS
+
+#include <iostream>
 #include <stdio.h>
 
-struct City
+struct Dominoe
 {
-    short citynum, adjacentqty;
-    short* adjacentstati;
-    City** adjacent;
-    bool checked = false;
+    short dnum, adjacentqty, depth = 0;
+    bool fallen = false;
+    Dominoe** adjacent;
 };
 
-struct Road
+struct DominoeDeckEl
 {
-    short city1, city2, status;
+    Dominoe* el;
+    DominoeDeckEl* next;
+    DominoeDeckEl* prev;
 };
 
-struct LinkStackEl
+void pop_front(DominoeDeckEl** head, Dominoe** taking)
 {
-    short* link;
-    LinkStackEl* next;
-};
-
-struct RoadStackEl
-{
-    short roadnum;
-    RoadStackEl* next;
-};
-
-void linkStackPush(LinkStackEl** head, short adjcity1, short adjcity2)
-{
-    LinkStackEl* lstemp = new LinkStackEl;
-    lstemp->link = new short[2];
-    lstemp->link[0] = adjcity1;
-    lstemp->link[1] = adjcity2;
-    lstemp->next = *head;
-    (*head) = lstemp;
+    DominoeDeckEl* temp = (*head);
+    *taking = temp->el;
+    (*head) = temp->next;
+    delete temp;
 }
 
-void linkStackPop(LinkStackEl** head)
+void push_first(DominoeDeckEl** head, DominoeDeckEl** tail, Dominoe* newdominoe)
 {
-    LinkStackEl* lstemp = *head;
-    (*head) = (*head)->next;
-    delete lstemp;
+    DominoeDeckEl* temp = new DominoeDeckEl;
+    temp->el = newdominoe;
+    temp->next = NULL;
+    temp->prev = NULL;
+    (*head) = (*tail) = temp;
 }
 
-short* linkStackSearch(LinkStackEl* head, short el1, short el2)
+void push_back(DominoeDeckEl** head, DominoeDeckEl** tail, Dominoe* newdominoe)
 {
-    LinkStackEl* lstemp = head;
-    while (lstemp != NULL)
+    DominoeDeckEl* temp = new DominoeDeckEl;
+    temp->el = newdominoe;
+    temp->next = NULL;
+    temp->prev = *tail;
+    (*tail)->next = temp;
+    (*tail) = temp;
+}
+
+
+int dominoesum(Dominoe* dominoe, short* currtime)
+{
+    DominoeDeckEl* head = NULL, * tail = NULL;
+    int sum = 0;
+    dominoe->fallen = true;
+    push_first(&head, &tail, dominoe);
+    Dominoe** tempadj;
+    while (head != NULL)
     {
-        if ((lstemp->link[0] == el1 && lstemp->link[1] == el2) || (lstemp->link[1] == el1 && lstemp->link[0] == el2)) return lstemp->link;
-        lstemp = lstemp->next;
-    }
-    return NULL;
-}
-
-void roadStackPush(RoadStackEl** head, short input)
-{
-    RoadStackEl* lstemp = new RoadStackEl;
-    lstemp->roadnum = input;
-    lstemp->next = *head;
-    (*head) = lstemp;
-}
-
-void roadStackPrint(RoadStackEl* head, FILE* fp)
-{
-    RoadStackEl* lstemp = head;
-    while (lstemp->next != NULL)
-    {
-        fprintf(fp, "%d ", lstemp->roadnum);
-        lstemp = lstemp->next;
-    }
-    return;
-}
-
-int checksum(City* currcity, LinkStackEl* linkstoomit, short status)
-{
-    short sum = currcity->citynum;
-    currcity->checked = true;
-    for (short curr = 0; curr < currcity->adjacentqty; curr++)
-    {
-        City* nextcity = currcity->adjacent[curr];
-        if(linkStackSearch(linkstoomit, currcity->citynum, nextcity->citynum) != NULL) goto next;
-        if (nextcity->checked == false && (currcity->adjacentstati[curr] == status || currcity->adjacentstati[curr] == 3)) sum += checksum(nextcity, linkstoomit, status);
-        next:;
+        pop_front(&head, &dominoe);
+        if (*currtime < dominoe->depth) *currtime = dominoe->depth;
+        tempadj = dominoe->adjacent;
+        sum += dominoe->dnum;
+        for (short curr = 0; curr < dominoe->adjacentqty; curr++)
+        {
+            if (tempadj[curr]->fallen == false)
+            {
+                tempadj[curr]->depth = dominoe->depth + 1;
+                if (head == NULL) push_first(&head, &tail, tempadj[curr]);
+                else push_back(&head, &tail, tempadj[curr]);
+                tempadj[curr]->fallen = true;
+            }
+        }
     }
     return sum;
 }
 
-void renew(City** cities, short cityqty)
+void renew(Dominoe** dominoes, short dominoesqty)
 {
-    for (short i = 1; i <= cityqty; i++) cities[i]->checked = false;
-    return;
-}
-
-void removelinks(City** cities, Road* roads, short cityqty, short roadqty, LinkStackEl* lto, LinkStackEl* ltk, int tempsum, FILE* fp)
-{
-    short removedqty = 0;
-    RoadStackEl* removedroads = new RoadStackEl;
-    removedroads->next = NULL;
-    removedroads->next = 0;
-    again:
-    for (short currc = 1; currc <= cityqty; currc++)
+    for (short curr = 1; curr <= dominoesqty; curr++)
     {
-        City* currcity = cities[currc];
-        for (short curr = 0; curr < currcity->adjacentqty; curr++)
-        {
-            short tempcitynum = currcity->adjacent[curr]->citynum;
-            if (linkStackSearch(ltk, currcity->citynum, tempcitynum) != NULL) continue;
-            linkStackPush(&lto, currcity->citynum, tempcitynum);
-            if (checksum(currcity, lto, 1) != tempsum)
-            {
-                linkStackPop(&lto);
-                linkStackPush(&ltk, currcity->citynum, tempcitynum);
-                renew(cities, cityqty);
-                continue;
-            }
-            renew(cities, cityqty);
-            if (checksum(currcity, lto, 2) != tempsum)
-            {
-                linkStackPop(&lto);
-                linkStackPush(&ltk, currcity->citynum, tempcitynum);
-                renew(cities, cityqty);
-                continue;
-            }
-            for (short curoad = 0; curoad < roadqty; curoad++)
-            {
-                if ((roads[curoad].city1 == currcity->citynum && roads[curoad].city2 == tempcitynum) || (roads[curoad].city2 == currcity->citynum && roads[curoad].city1 == tempcitynum))
-                {
-                    removedqty++;
-                    roadStackPush(&removedroads, curoad+1);
-                }
-            }
-            goto again;
-        }
+        dominoes[curr]->fallen = false;
+        dominoes[curr]->depth = 0;
     }
-    fprintf(fp, "%d\n", removedqty);
-    roadStackPrint(removedroads, fp);
-    return;
 }
 
 int main()
 {
-    int cityqty = 0;
-    int roadqty = 0;
-    FILE* fp;
-    fopen_s(&fp, "E:/Important/tiit/input.txt", "r");
-    fscanf_s(fp, "%d %d\n", &cityqty, &roadqty);
-    if (roadqty == 0 || cityqty == 0)
+    FILE* fp = fopen("input.txt", "r");;
+    short dominoesqty = 0;
+    fscanf(fp, "%hd", &dominoesqty);
+    if (dominoesqty == 0) return 0;
+    Dominoe** dominoes = new Dominoe* [dominoesqty+1];
+    for (short curr = 1; curr <= dominoesqty; curr++)
     {
-        fopen_s(&fp, "E:/Important/tiit/output.txt", "w");
-        fprintf(fp, "-1");
-        return 0;
+        dominoes[curr] = new Dominoe;
     }
-    Road* roads = new Road [roadqty];
-    for (short curr = 0; curr < roadqty; curr++)
+    short tempadjqty, tempadjdominoe;
+    Dominoe* temp;
+    for (short curr = 1; curr <= dominoesqty; curr++)
     {
-        fscanf_s(fp, "%d %d %d\n", &(roads[curr].city1), &(roads[curr].city2), &(roads[curr].status));
-        if (roads[curr].city1 > roads[curr].city2)
+        temp = dominoes[curr];
+        fscanf(fp, "%hd", &tempadjqty);
+        temp->adjacentqty = tempadjqty;
+        temp->dnum = curr;
+        if (tempadjqty == 0) continue;
+        temp->adjacent = new Dominoe* [tempadjqty];
+        for (short curr = 0; curr < tempadjqty; curr++)
         {
-            short temp = roads[curr].city1;
-            roads[curr].city1 = roads[curr].city2;
-            roads[curr].city2 = temp;
+            fscanf(fp, " %hd", &tempadjdominoe);
+            temp->adjacent[curr] = dominoes[tempadjdominoe];
         }
+        fscanf(fp, "\n");
     }
-    City** cities = new City* [cityqty+1];
-    for (short curr = 1; curr <= cityqty; curr++)
+    fclose(fp);
+    short maxtime = -1, currtime = 0, startdominoenum;
+    int mastersum = dominoesqty * (dominoesqty + 1) / 2;
+    for (short curr = 1; curr <= dominoesqty; curr++)
     {
-        City* tempcity = new City;
-        tempcity->adjacent = new City* [cityqty];
-        tempcity->adjacentqty = 0;
-        tempcity->checked = false;
-        tempcity->citynum = curr;
-        tempcity->adjacentstati = new short [cityqty];
-        cities[curr] = tempcity;
-    }
-    for (short curr = 1; curr <= cityqty; curr++)
-    {
-        for (short curoad = 0; curoad < roadqty; curoad++)
+        if (dominoesum(dominoes[curr], &currtime) == mastersum)
         {
-            short firstcitynum = roads[curoad].city1;
-            short secondcitynum = roads[curoad].city2;
-            short currstatus = roads[curoad].status;
-            if (firstcitynum == curr)
+            if (maxtime <= currtime)
             {
-                cities[curr]->adjacent[cities[curr]->adjacentqty] = cities[secondcitynum];
-                cities[curr]->adjacentstati[cities[curr]->adjacentqty++] = currstatus;
-            }
-            if (secondcitynum == curr)
-            {
-                cities[curr]->adjacent[cities[curr]->adjacentqty] = cities[firstcitynum];
-                cities[curr]->adjacentstati[cities[curr]->adjacentqty++] = currstatus;
+                maxtime = currtime;
+                startdominoenum = curr;
             }
         }
+        currtime = 0;
+        renew(dominoes, dominoesqty);
     }
-    LinkStackEl* head_linkstoomit = new LinkStackEl;
-    LinkStackEl* head_linkstokeep = new LinkStackEl;
-    head_linkstoomit->link = head_linkstokeep->link = new short[2];
-    head_linkstoomit->link[0] = head_linkstokeep->link[0] = 0;
-    head_linkstoomit->link[1] = head_linkstokeep->link[1] = 0;
-    head_linkstoomit->next = head_linkstokeep->next = NULL;
-    int mastersum = cityqty * (cityqty + 1) / 2;
-    int tempsum = checksum(cities[1], head_linkstoomit, 1);
-    if (mastersum != tempsum) return 0;
-    renew(cities, cityqty);
-    fopen_s(&fp, "E:/Important/tiit/output.txt", "w");
-    removelinks(cities, roads, cityqty, roadqty, head_linkstokeep, head_linkstoomit, tempsum, fp);
+    fp = fopen("output.txt", "w");
+    if (maxtime == -1) fprintf(fp, "impossible");
+    else fprintf(fp, "%hd\n%hd", maxtime, startdominoenum);
+    fclose(fp);
+    delete fp;
     return 0;
 }
