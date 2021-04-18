@@ -1,36 +1,75 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <iostream>
+
+struct Node
+{
+    int adjacentqty = 0, val;
+    Node** adjacent;
+};
 
 struct Graph
 {
-    int** adjMatrix;
-    int nodeqty, linkqty;
+    int nodeqty;
+    Node** nodes;
 };
 
-Graph intersect(Graph* graphs, int graphcount)
+bool areAdjacent(Node* node1, Node* node2)
 {
-    int intersectionSize = graphs[0].nodeqty;
-    for (int currgraph = 1; currgraph < graphcount; currgraph++)
+    for (int curradj = 0; curradj < node1->adjacentqty; curradj++)
     {
-        if (graphs[currgraph].nodeqty < intersectionSize) intersectionSize = graphs[currgraph].nodeqty;
+        if (node1->adjacent[curradj] == node2) return true;
     }
+    return false;
+}
+
+Graph intersectionOf(Graph* graphs, int graphqty)
+{
     Graph intersection;
-    intersection.nodeqty = intersectionSize;
-    intersection.linkqty = 0;
-    intersection.adjMatrix = new int* [intersectionSize];
-    for (int row = 0; row < intersectionSize; row++)
+    intersection.nodeqty = graphs[1].nodeqty;
+    Graph graphWithFewestNodes = graphs[1];
+    for (int currgraph = 2; currgraph <= graphqty; currgraph++)
     {
-        intersection.adjMatrix[row] = new int [intersectionSize];
-        for (int col = 0; col < intersectionSize; col++)
+        if (graphs[currgraph].nodeqty < intersection.nodeqty)
         {
-            int min = graphs[0].adjMatrix[row][col];
-            for(int currgraph = 1; currgraph < graphcount; currgraph++)
-            {
-                min = graphs[currgraph].nodeqty;
-                if (graphs[currgraph].adjMatrix[row][col] < min) min = graphs[currgraph].adjMatrix[row][col];
-            }
-            intersection.adjMatrix[row][col] = min;
-            intersection.linkqty += min;
+            intersection.nodeqty = graphs[currgraph].nodeqty;
+            graphWithFewestNodes = graphs[currgraph];
         }
+    }
+    intersection.nodes = new Node* [intersection.nodeqty];
+    for (int currnode = 1; currnode <= intersection.nodeqty; currnode++)
+    {
+        intersection.nodes[currnode] = new Node;
+    }
+    Graph tempgraph;
+    for (int currnode = 1; currnode <= intersection.nodeqty; currnode++)
+    {
+        for (int curradjnode = 1; curradjnode <= intersection.nodeqty; curradjnode++)
+        {
+            for (int currgraph = 1; currgraph <= graphqty; currgraph++)
+            {
+                tempgraph = graphs[currgraph];
+                if (!(areAdjacent(tempgraph.nodes[currnode], tempgraph.nodes[curradjnode]))) goto nextadjnode;
+            }
+            intersection.nodes[currnode]->adjacentqty++;
+            nextadjnode:;
+        }
+        intersection.nodes[currnode]->adjacent = new Node* [intersection.nodes[currnode]->adjacentqty];
+    }
+    int currindex = 0;
+    for (int currnode = 1; currnode <= intersection.nodeqty; currnode++)
+    {
+        for (int curradjnode = 1; curradjnode <= intersection.nodeqty; curradjnode++)
+        {
+            for (int currgraph = 1; currgraph <= graphqty; currgraph++)
+            {
+                tempgraph = graphs[currgraph];
+                if (!(areAdjacent(tempgraph.nodes[currnode], tempgraph.nodes[curradjnode]))) goto nextadjnode2;
+            }
+            intersection.nodes[currnode]->adjacent[currindex++] = graphWithFewestNodes.nodes[curradjnode];
+            nextadjnode2:;
+        }
+        currindex = 0;
     }
     return intersection;
 }
@@ -39,52 +78,42 @@ int main()
 {
     int graphcount = 0;
     printf("How many graphs will there be? ");
-    scanf_s("%d", &graphcount);
-    Graph* graphs = new Graph[graphcount];
-    for (int currgraph = 0; currgraph < graphcount; currgraph++)
+    scanf("%d", &graphcount);
+    Graph* graphs = new Graph[graphcount+1];
+    int tempqty;
+    for (int currgraph = 1; currgraph <= graphcount; currgraph++)
     {
-        int currnodecount, currlinkcount;
-        printf("Input node count and link count of graph %d: ", currgraph);
-        scanf_s("%d %d", &currnodecount, &currlinkcount);
-        Graph temp;
-        temp.nodeqty = currnodecount;
-        temp.linkqty = currlinkcount;
-        temp.adjMatrix = new int* [currnodecount];
-        for (int row = 0; row < currnodecount; row++)
+        printf("\nHow many nodes will there be in graph %d? ", currgraph);
+        scanf("%d", &tempqty);
+        graphs[currgraph].nodeqty = tempqty;
+        graphs[currgraph].nodes = new Node* [tempqty+1];
+        for (int currnode = 1; currnode <= tempqty; currnode++)
         {
-            temp.adjMatrix[row] = new int [currnodecount];
-            for (int col = 0; col < currnodecount; col++)
+            graphs[currgraph].nodes[currnode] = new Node;
+        }
+        for (int currnode = 1; currnode <= tempqty; currnode++)
+        {
+            printf("Input the nodes adjacent to node %d: first their quantity, then their numbers\n", currnode);
+            Node* temp = graphs[currgraph].nodes[currnode];
+            temp->val = currnode;
+            scanf("%d", &(temp->adjacentqty));
+            temp->adjacent = new Node* [temp->adjacentqty];
+            int tempnode;
+            for (int curr = 0; curr < temp->adjacentqty; curr++) 
             {
-                temp.adjMatrix[row][col] = 0;
+                scanf("%d", &tempnode);
+                temp->adjacent[curr] = graphs[currgraph].nodes[tempnode];
             }
         }
-        printf("Specify links in form of \"node1 node2\":\n");
-        int node1, node2;
-        for (int currlink = 1; currlink <= currlinkcount; currlink++)
-        {
-            printf("Link %d: ", currlink);
-            scanf_s("%d %d", &node1, &node2);
-            temp.adjMatrix[node1][node2]++;
-            temp.adjMatrix[node2][node1]++;
-        }
-        graphs[currgraph] = temp;
-        for (int i = 0; i < currnodecount; i++)
-        {
-            for (int j = 0; j < currnodecount; j++)
-            {
-                printf("%d ", temp.adjMatrix[i][j]);
-            }
-            printf("\n");
-        }
-        printf("\n");
     }
-    Graph intersection = intersect(graphs, graphcount);
-    printf("The intersection will be described by the following matrix:\n");
-    for (int row = 0; row < intersection.nodeqty; row++)
+    Graph intersection = intersectionOf(graphs, graphcount);
+    printf("\n\nThe intersection of these graphs will be given by the following adjacency lists:\n");
+    for (int currnode = 1; currnode <= intersection.nodeqty; currnode++)
     {
-        for (int col = 0; col < intersection.nodeqty; col++)
+        printf("%d ", intersection.nodes[currnode]->adjacentqty);
+        for (int curradjnode = 0; curradjnode < intersection.nodes[currnode]->adjacentqty; curradjnode++)
         {
-            printf("%d ", intersection.adjMatrix[row][col]);
+            printf("%d ", intersection.nodes[currnode]->adjacent[curradjnode]->val);
         }
         printf("\n");
     }
